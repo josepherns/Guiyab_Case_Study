@@ -1,0 +1,44 @@
+---
+
+  - name: Configure Standard ACL
+    hosts: R2
+    gather_facts: false
+    connection: local
+    vars:
+      cli:
+        username: cisco
+        password: cisco123
+
+    tasks:
+      - name: Deny only IP Address 192.168.2.3
+        ios_config:
+          provider: "{{ cli }}"
+          lines:
+            - 10 deny icmp host 192.168.2.3 any
+            - 20 permit ip any any
+          parents: ip access-list extended ACL-PC1
+
+      - name: Apply in S0/2
+        ios_config:
+          provider: "{{ cli }}"
+          parents: interface s0/2
+          lines:
+            - ip access-group ACL-PC1 in
+
+      - name: Save Configuration
+        ios_config:
+          provider: "{{ cli }}"
+          lines:
+            - do write
+
+      - name: print ip route
+        ios_command:
+          provider: "{{ cli }}"
+          commands:
+            - show running-config
+        register: config
+
+      - name: SAVE OUTPUT TO ./iosconfig/ 
+        copy:
+          content: "{{config.stdout[0]}}"
+          dest: "iosconfig/show_runningconfig{{inventory_hostname}}.txt"
